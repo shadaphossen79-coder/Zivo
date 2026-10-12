@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zivo - Chat App</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 450px; height: 90vh; background: #fff; display: flex; flex-direction: column; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .chat-header { background: #075e54; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h2 { font-size: 20px; }
+        #user-info { font-size: 14px; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 5px; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #e5ddd5; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 75%; padding: 10px; border-radius: 8px; position: relative; word-break: break-word; font-size: 14px; }
+        .message.sent { background: #dcf8c6; align-self: flex-end; }
+        .message.received { background: #fff; align-self: flex-start; }
+        .message .sender { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 3px; display: block; }
+        .chat-input { display: flex; padding: 10px; background: #f0f0f0; }
+        .chat-input input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
+        .chat-input button { background: #075e54; color: white; border: none; padding: 10px 20px; margin-left: 8px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .chat-input button:hover { background: #0b675c; }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <h2>Zivo</h2>
+            <span id="user-info">Connecting...</span>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chat-messages" id="messages">
+            <!-- Messages will load here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input">
+            <input type="text" id="message-input" placeholder="Type a message..." autofocus>
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <!-- Firebase Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // আপনার প্রজেক্টের সঠিক Firebase Config এখানে বসানো হলো
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWwbaQ9NdXvrl0pwyO8btR_x2dGFEdM6I",
+            authDomain: "zivo-9d67d.firebaseapp.com",
+            databaseURL: "https://zivo-9d67d-default-rtdb.firebaseio.com",
+            projectId: "zivo-9d67d",
+            storageBucket: "zivo-9d67d.firebasestorage.app",
+            messagingSenderId: "34518513545",
+            appId: "1:34518513545:web:4b62ebdbdd93298f1f1358",
+            measurementId: "G-V1HNWP5XMY"
+        };
+
+        // Firebase ইনিশিয়ালাইজ করা
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // ইউজারের নাম জেনারেট করা
+        let userName = localStorage.getItem("zivo_username");
+        if (!userName) {
+            userName = "User_" + Math.floor(Math.random() * 1000);
+            localStorage.setItem("zivo_username", userName);
+        }
+        document.getElementById("user-info").innerText = userName;
+
+        const messageInput = document.getElementById("message-input");
+        const sendBtn = document.getElementById("send-btn");
+        const messagesContainer = document.getElementById("messages");
+
+        // মেসেজ পাঠানো ফাংশন
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text === "") return;
+
+            const messagesRef = ref(db, 'messages');
+            const newMessageRef = push(messagesRef);
+            
+            set(newMessageRef, {
+                username: userName,
+                text: text,
+                timestamp: Date.now()
+            });
+
+            messageInput.value = "";
+        }
+
+        sendBtn.addEventListener("click", sendMessage);
+        messageInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        // রিয়েল-টাইমে মেসেজ রিসিভ করা
+        const messagesRef = ref(db, 'messages');
+        onChildAdded(messagesRef, (snapshot) => {
+            const msgData = snapshot.val();
+            const messageDiv = document.createElement("div");
+            
+            if (msgData.username === userName) {
+                messageDiv.className = "message sent";
+                messageDiv.innerHTML = `<span class="sender">You</span>${msgData.text}`;
+            } else {
+                messageDiv.className = "message received";
+                messageDiv.innerHTML = `<span class="sender">${msgData.username}</span>${msgData.text}`;
+            }
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    </script>
+</body>
+</html>
